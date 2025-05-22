@@ -41,7 +41,7 @@ chmod +x openvpn-install-prisma.sh
 Then run it:
 
 ```sh
-./openvpn-install.sh
+./openvpn-install-prisma.sh
 ```
 
 You need to run the script as root and have the TUN module enabled.
