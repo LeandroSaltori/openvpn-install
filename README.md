@@ -44,6 +44,12 @@ Then run it:
 ./openvpn-install-prisma.sh
 ```
 
+systemctl start openvpn-server@server
+
+systemctl status openvpn-server@server
+
+
+
 You need to run the script as root and have the TUN module enabled.
 
 The first time you run it, you'll have to follow the assistant and answer a few questions to setup your VPN server.
