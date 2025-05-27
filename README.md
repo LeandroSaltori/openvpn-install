@@ -34,7 +34,7 @@ graph LR
 First, get the script and make it executable:
 
 ```bash
-curl -O https://github.com/LeandroSaltori/openvpn-install/blob/master/openvpn-install-prisma.sh
+curl -o openvpn-install-prisma.sh https://raw.githubusercontent.com/LeandroSaltori/openvpn-install/master/openvpn-install-prisma.sh
 chmod +x openvpn-install-prisma.sh
 ```
 
