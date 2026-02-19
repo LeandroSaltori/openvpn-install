@@ -895,7 +895,8 @@ ifconfig-pool-persist ipp.txt" >>/etc/openvpn/server.conf
 		fi
 		;;
 	esac
-	;echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
+	#LINHA ABAIXO COMENTADA - 19/02/026
+	#echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
 	echo 'push "route 177.35.0.0 255.255.255.0"' >>/etc/openvpn/server.conf
 
 	# IPv6 network settings if needed
@@ -904,7 +905,7 @@ ifconfig-pool-persist ipp.txt" >>/etc/openvpn/server.conf
 tun-ipv6
 push tun-ipv6
 push "route-ipv6 2000::/3"
-push "redirect-gateway ipv6"' >>/etc/openvpn/server.conf
+#push "redirect-gateway ipv6"' >>/etc/openvpn/server.conf
 	fi
 
 	if [[ $COMPRESSION_ENABLED == "y" ]]; then
