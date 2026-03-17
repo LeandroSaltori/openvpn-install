@@ -895,7 +895,7 @@ ifconfig-pool-persist ipp.txt" >>/etc/openvpn/server.conf
 		fi
 		;;
 	esac
-		echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
+		# echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
 	
 
 	# IPv6 network settings if needed
@@ -1064,6 +1064,8 @@ WantedBy=multi-user.target" >/etc/systemd/system/iptables-openvpn.service
 
 	# client-template.txt is created so we have a template to add further users later
 	echo "client" >/etc/openvpn/client-template.txt
+	echo "route-nopull" >>/etc/openvpn/client-template.txt
+	echo "route 177.35.0.0 255.255.255.0" >>/etc/openvpn/client-template.txt
 	if [[ $PROTOCOL == 'udp' ]]; then
 		echo "proto udp" >>/etc/openvpn/client-template.txt
 		echo "explicit-exit-notify" >>/etc/openvpn/client-template.txt
