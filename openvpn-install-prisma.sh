@@ -1,140 +1,170 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2164,SC2034,SC1072,SC1073,SC1009
 
-AUTO_INSTALL=y
-APPROVE_INSTALL=y
-APPROVE_IP=y
-IPV6_SUPPORT=n
-PORT_CHOICE=1
-PROTOCOL_CHOICE=1
-DNS=1
-COMPRESSION_ENABLED=n
-CUSTOMIZE_ENC=n
-CLIENT=prisma
-PASS=1
-ENDPOINT=$(curl -s ifconfig.me)
+# Secure OpenVPN server installer for Debian, Ubuntu, CentOS, Rocky Linux.
+# Customizado para Prismabot - Split Tunneling (Acesso PABX + Internet Local)
 
-# instalar dependências
-dnf install -y epel-release
-dnf install -y openvpn easy-rsa iptables wget curl
+function isRoot() {
+	if [ "$EUID" -ne 0 ]; then
+		return 1
+	fi
+}
 
-mkdir -p /etc/openvpn/easy-rsa
-cd /etc/openvpn
+function tunAvailable() {
+	if [ ! -e /dev/net/tun ]; then
+		return 1
+	fi
+}
 
-# gerar PKI
-cd /etc/openvpn
-make-cadir easy-rsa
-cd easy-rsa
+function checkOS() {
+	if [[ -e /etc/debian_version ]]; then
+		OS="debian"
+		source /etc/os-release
+	elif [[ -e /etc/fedora-release ]]; then
+		OS="fedora"
+	elif [[ -e /etc/centos-release || -e /etc/redhat-release || -e /etc/rocky-release ]]; then
+		OS="centos"
+	else
+		echo "Sistema operacional não suportado."
+		exit 1
+	fi
+}
 
-./easyrsa init-pki
-./easyrsa build-ca nopass
-./easyrsa gen-dh
-./easyrsa build-server-full server nopass
-./easyrsa build-client-full $CLIENT nopass
-./easyrsa gen-crl
+function initialCheck() {
+	if ! isRoot; then
+		echo "Você precisa rodar como root!"
+		exit 1
+	fi
+	if ! tunAvailable; then
+		echo "Dispositivo TUN não disponível!"
+		exit 1
+	fi
+}
 
-cp pki/ca.crt /etc/openvpn
-cp pki/private/server.key /etc/openvpn
-cp pki/issued/server.crt /etc/openvpn
-cp pki/dh.pem /etc/openvpn
-cp pki/crl.pem /etc/openvpn
+function installOpenVPN() {
+	IP=$(curl -s https://api.ipify.org)
+	PORT="1194"
+	PROTOCOL="udp"
 
-# gerar server.conf
-cat <<EOF > /etc/openvpn/server.conf
-port 1194
-proto udp
+	if [[ $OS == 'debian' ]]; then
+		apt-get update
+		apt-get install -y openvpn openssl ca-certificates easy-rsa
+	else
+		yum install -y epel-release
+		yum install -y openvpn openssl ca-certificates easy-rsa
+	fi
+
+	# Configuração do EASY-RSA e Certificados
+	EASYRSA_DIR="/etc/openvpn/easy-rsa"
+	mkdir -p $EASYRSA_DIR
+	cp -r /usr/share/easy-rsa/* $EASYRSA_DIR/
+	cd $EASYRSA_DIR || exit
+	./easyrsa init-pki
+	./easyrsa --batch build-ca nopass
+	./easyrsa --batch gen-req server nopass
+	./easyrsa --batch sign-req server server
+	./easyrsa --batch gen-dh
+	openvpn --genkey --secret ta.key
+	cp pki/ca.crt pki/issued/server.crt pki/private/server.key pki/dh.pem ta.key /etc/openvpn/
+
+	# --- GERAÇÃO DO SERVER.CONF (PADRÃO PRISMABOT) ---
+	cat <<EOF > /etc/openvpn/server.conf
+port $PORT
+proto $PROTOCOL
 dev tun
-
 user nobody
 group nobody
 persist-key
 persist-tun
-
-topology subnet
-
-server 177.35.0.0 255.255.255.0
-
 keepalive 10 120
-
-cipher AES-128-GCM
-auth SHA256
-
+topology subnet
+server 177.35.0.0 255.255.255.0
+ifconfig-pool-persist ipp.txt
 ca ca.crt
 cert server.crt
 key server.key
 dh dh.pem
-crl-verify crl.pem
-
-client-config-dir /etc/openvpn/ccd
-
-status /var/log/openvpn-status.log
+tls-auth ta.key 0
+cipher AES-256-CBC
+auth SHA256
 verb 3
 
-# DNS
-push "dhcp-option DNS 1.1.1.1"
-push "dhcp-option DNS 8.8.8.8"
+# --- AJUSTES SPLIT TUNNEL PRISMABOT ---
+# NÃO redirecionamos o gateway (Mantém internet local do cliente)
+# push "redirect-gateway def1 bypass-dhcp"
 
-# SPLIT TUNNEL
+# Forçamos a rota apenas para a rede do PABX/Servidor
 push "route 177.35.0.0 255.255.255.0"
 
+# DNS desativado no túnel para evitar falha de nomes (UOL, Google, etc)
+# push "dhcp-option DNS 8.8.8.8"
 EOF
 
-mkdir -p /etc/openvpn/ccd
+	# Habilitar IP Forwarding
+	echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/99-openvpn.conf
+	sysctl --system
 
-# habilitar forward
-echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-openvpn.conf
-sysctl --system
+	# Firewall (Ajustado para Rocky/CentOS)
+	if [[ $OS == 'centos' ]]; then
+		firewall-cmd --add-service=openvpn --permanent
+		firewall-cmd --add-masquerade --permanent
+		firewall-cmd --reload
+	fi
 
-# regras firewall
-NIC=$(ip route | grep default | awk '{print $5}')
+	systemctl enable openvpn-server@server
+	systemctl restart openvpn-server@server
+	echo "Instalação concluída!"
+}
 
-cat <<EOF > /etc/iptables-openvpn.sh
-iptables -t nat -A POSTROUTING -s 177.35.0.0/24 -o $NIC -j MASQUERADE
-iptables -A INPUT -i tun0 -j ACCEPT
-iptables -A FORWARD -i tun0 -j ACCEPT
-iptables -A FORWARD -o tun0 -j ACCEPT
-EOF
-
-chmod +x /etc/iptables-openvpn.sh
-/etc/iptables-openvpn.sh
-
-# iniciar openvpn
-systemctl enable openvpn-server@server
-systemctl restart openvpn-server@server
-
-# gerar client.ovpn
-cat <<EOF > /root/$CLIENT.ovpn
+function newClient() {
+	CLIENT=$1
+	cd /etc/openvpn/easy-rsa || exit
+	./easyrsa --batch build-client-full "$CLIENT" nopass
+	
+	# Gerar arquivo .ovpn
+	cat <<EOF > ~/"$CLIENT".ovpn
 client
 dev tun
 proto udp
-remote $ENDPOINT 1194
+remote $(curl -s https://api.ipify.org) 1194
 resolv-retry infinite
 nobind
 persist-key
 persist-tun
-
 remote-cert-tls server
-
-cipher AES-128-GCM
+cipher AES-256-CBC
 auth SHA256
-
+key-direction 1
 verb 3
-
+<ca>
+$(cat /etc/openvpn/ca.crt)
+</ca>
+<cert>
+$(cat /etc/openvpn/easy-rsa/pki/issued/"$CLIENT".crt)
+</cert>
+<key>
+$(cat /etc/openvpn/easy-rsa/pki/private/"$CLIENT".key)
+</key>
+<tls-auth>
+$(cat /etc/openvpn/ta.key)
+</tls-auth>
 EOF
+	echo "Arquivo de cliente criado em: ~/$CLIENT.ovpn"
+}
 
-echo "<ca>" >> /root/$CLIENT.ovpn
-cat /etc/openvpn/easy-rsa/pki/ca.crt >> /root/$CLIENT.ovpn
-echo "</ca>" >> /root/$CLIENT.ovpn
+# --- EXECUÇÃO ---
+initialCheck
+checkOS
 
-echo "<cert>" >> /root/$CLIENT.ovpn
-awk '/BEGIN/,/END CERTIFICATE/' /etc/openvpn/easy-rsa/pki/issued/$CLIENT.crt >> /root/$CLIENT.ovpn
-echo "</cert>" >> /root/$CLIENT.ovpn
-
-echo "<key>" >> /root/$CLIENT.ovpn
-cat /etc/openvpn/easy-rsa/pki/private/$CLIENT.key >> /root/$CLIENT.ovpn
-echo "</key>" >> /root/$CLIENT.ovpn
-
-echo ""
-echo "VPN instalada com sucesso!"
-echo ""
-echo "Arquivo cliente:"
-echo "/root/$CLIENT.ovpn"
+if [[ -e /etc/openvpn/server.conf ]]; then
+	echo "OpenVPN Prismabot já instalado."
+	echo "1) Adicionar novo usuário"
+	echo "2) Sair"
+	read -rp "Opção: " opt
+	if [[ $opt == "1" ]]; then
+		read -rp "Nome do cliente: " CN
+		newClient "$CN"
+	fi
+else
+	installOpenVPN
+fi
