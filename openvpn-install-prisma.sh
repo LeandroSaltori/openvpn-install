@@ -166,7 +166,7 @@ EOF
 	# Chave TLS-Crypt para proteção adicional contra scanners
 	mkdir -p /etc/openvpn
 	if [[ ! -s /etc/openvpn/tls-crypt.key ]]; then
-		openvpn --genkey /etc/openvpn/tls-crypt.key 2>/dev/null || openvpn --genkey secret /etc/openvpn/tls-crypt.key 2>/dev/null || true
+		openvpn --genkey --secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || openvpn --genkey secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || true
 	fi
 
 	# Copiar certificados para a pasta /etc/openvpn/
@@ -341,6 +341,10 @@ function newClientInternal() {
 
 	SAVED_OVPN_PATH="$homeDir/${client_name}.ovpn"
 
+	if [[ ! -s /etc/openvpn/tls-crypt.key ]]; then
+		openvpn --genkey --secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || openvpn --genkey secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || true
+	fi
+
 	cp /etc/openvpn/client-template.txt "$SAVED_OVPN_PATH"
 	{
 		echo "<ca>"
@@ -352,9 +356,6 @@ function newClientInternal() {
 		echo "<key>"
 		awk '/BEGIN/,/END PRIVATE KEY/' "/etc/openvpn/easy-rsa/pki/private/${client_name}.key"
 		echo "</key>"
-		if [[ ! -s /etc/openvpn/tls-crypt.key ]]; then
-			openvpn --genkey /etc/openvpn/tls-crypt.key 2>/dev/null || openvpn --genkey secret /etc/openvpn/tls-crypt.key 2>/dev/null || true
-		fi
 		if [[ -s /etc/openvpn/tls-crypt.key ]]; then
 			echo "<tls-crypt>"
 			cat /etc/openvpn/tls-crypt.key
