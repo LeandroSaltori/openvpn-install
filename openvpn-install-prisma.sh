@@ -58,19 +58,17 @@ function installOpenVPN() {
 	echo "=================================================================="
 	echo ""
 
-	# Obter IP público ou domínio
+	# Obter IP público ou DDNS (obrigatorio informar)
 	DETECTED_IP=$(resolvePublicIP)
-	if [[ -z $DETECTED_IP ]]; then
-		DETECTED_IP="127.0.0.1"
-	fi
+	until [[ -n $ENDPOINT ]]; do
+		read -rp "Endereço IP público ou Domínio (ex: alphasis.ddns.com.br): " ENDPOINT
+		ENDPOINT=$(echo "$ENDPOINT" | tr -d '[:space:]')
+		if [[ -z $ENDPOINT ]]; then
+			echo "⚠️ Erro: É necessário digitar o IP público ou o endereço DDNS."
+		fi
+	done
 
-	read -rp "Endereço IP público ou Domínio [${DETECTED_IP}]: " ENDPOINT
-	if [[ -z $ENDPOINT ]]; then
-		ENDPOINT="$DETECTED_IP"
-	fi
-	ENDPOINT=$(echo "$ENDPOINT" | tr -d '[:space:]')
-
-	# Porta do servidor
+	# Porta do servidor (padrão 1194)
 	read -rp "Porta do OpenVPN [1194]: " PORT
 	if [[ -z $PORT ]]; then
 		PORT="1194"
@@ -84,7 +82,7 @@ function installOpenVPN() {
 		PORT=$(echo "$PORT" | tr -d '[:space:]')
 	done
 
-	# Protocolo
+	# Protocolo (padrão UDP)
 	echo ""
 	echo "Selecione o protocolo:"
 	echo "   1) UDP (Recomendado - mais rápido)"
@@ -95,7 +93,7 @@ function installOpenVPN() {
 	*) PROTOCOL="udp" ;;
 	esac
 
-	# Subrede VPN
+	# Subrede VPN (padrão 177.35.0.0)
 	echo ""
 	read -rp "Subrede IP da VPN [177.35.0.0]: " VPN_SUBNET
 	if [[ -z $VPN_SUBNET ]]; then
@@ -109,9 +107,9 @@ function installOpenVPN() {
 	fi
 	VPN_NETMASK=$(echo "$VPN_NETMASK" | tr -d '[:space:]')
 
-	# Nome do Primeiro Cliente
+	# Nome do Primeiro Cliente (padrão suporte-prisma)
 	echo ""
-	read -rp "Nome do primeiro arquivo de cliente [.ovpn]: " CLIENT_NAME
+	read -rp "Nome do primeiro arquivo de cliente [suporte-prisma]: " CLIENT_NAME
 	if [[ -z $CLIENT_NAME ]]; then
 		CLIENT_NAME="suporte-prisma"
 	fi
