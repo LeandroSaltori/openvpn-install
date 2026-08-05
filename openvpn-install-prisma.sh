@@ -164,7 +164,10 @@ EOF
 	./easyrsa gen-crl
 
 	# Chave TLS-Crypt para proteção adicional contra scanners
-	openvpn --genkey secret /etc/openvpn/tls-crypt.key
+	mkdir -p /etc/openvpn
+	if [[ ! -s /etc/openvpn/tls-crypt.key ]]; then
+		openvpn --genkey secret /etc/openvpn/tls-crypt.key 2>/dev/null || openvpn --genkey tls-crypt /etc/openvpn/tls-crypt.key 2>/dev/null || true
+	fi
 
 	# Copiar certificados para a pasta /etc/openvpn/
 	cp pki/ca.crt pki/private/ca.key "pki/issued/$SERVER_NAME.crt" "pki/private/$SERVER_NAME.key" pki/crl.pem /etc/openvpn/
@@ -349,9 +352,14 @@ function newClientInternal() {
 		echo "<key>"
 		cat "/etc/openvpn/easy-rsa/pki/private/${client_name}.key"
 		echo "</key>"
-		echo "<tls-crypt>"
-		cat /etc/openvpn/tls-crypt.key
-		echo "</tls-crypt>"
+		if [[ ! -s /etc/openvpn/tls-crypt.key ]]; then
+			openvpn --genkey secret /etc/openvpn/tls-crypt.key 2>/dev/null || openvpn --genkey tls-crypt /etc/openvpn/tls-crypt.key 2>/dev/null || true
+		fi
+		if [[ -s /etc/openvpn/tls-crypt.key ]]; then
+			echo "<tls-crypt>"
+			cat /etc/openvpn/tls-crypt.key
+			echo "</tls-crypt>"
+		fi
 	} >>"$SAVED_OVPN_PATH"
 }
 

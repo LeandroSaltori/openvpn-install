@@ -121,7 +121,7 @@ Sysctl options are at `/etc/sysctl.d/20-openvpn.conf`
 userlist=(user1 user2 user3)
 
 for i in ${userlist[@]};do
-   MENU_OPTION=1 CLIENT=$i PASS=1 ./openvpn-install.sh
+   MENU_OPTION=1 CLIENT=$i PASS=1 ./openvpn-install-prisma.sh
 done
 ```
 
@@ -129,7 +129,7 @@ From a list in a text file:
 
 ```sh
 while read USER
-    do MENU_OPTION="1" CLIENT="$USER" PASS="1" ./openvpn-install.sh
+    do MENU_OPTION="1" CLIENT="$USER" PASS="1" ./openvpn-install-prisma.sh
 done < users.txt
 ```
 
