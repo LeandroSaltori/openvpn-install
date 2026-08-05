@@ -198,7 +198,7 @@ cert $SERVER_NAME.crt
 key $SERVER_NAME.key
 auth SHA256
 cipher AES-256-GCM
-data-ciphers AES-256-GCM:AES-128-GCM
+ncp-ciphers AES-256-GCM:AES-128-GCM
 tls-server
 tls-version-min 1.2
 client-config-dir /etc/openvpn/ccd
