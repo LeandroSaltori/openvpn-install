@@ -66,16 +66,28 @@ function installOpenVPN() {
 
 	# Obter IP público / endpoint
 	DETECTED_IP=$(resolvePublicIP)
-	read -rp "Endereço IP público ou Domínio [${DETECTED_IP}]: " -e -i "$DETECTED_IP" ENDPOINT
-	if [[ -z $ENDPOINT ]]; then
-		echo "⚠️ Erro: É necessário informar um IP público ou domínio."
-		exit 1
+	if [[ -z $DETECTED_IP ]]; then
+		DETECTED_IP="127.0.0.1"
 	fi
 
+	read -rp "Endereço IP público ou Domínio [${DETECTED_IP}]: " ENDPOINT
+	if [[ -z $ENDPOINT ]]; then
+		ENDPOINT="$DETECTED_IP"
+	fi
+	ENDPOINT=$(echo "$ENDPOINT" | tr -d '[:space:]')
+
 	# Porta do servidor
-	read -rp "Porta do OpenVPN [1194]: " -e -i 1194 PORT
+	read -rp "Porta do OpenVPN [1194]: " PORT
+	if [[ -z $PORT ]]; then
+		PORT="1194"
+	fi
+	PORT=$(echo "$PORT" | tr -d '[:space:]')
 	until [[ $PORT =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ]; do
-		read -rp "Porta inválida. Digite novamente [1-65535]: " -e -i 1194 PORT
+		read -rp "Porta inválida. Digite novamente [1-65535]: " PORT
+		if [[ -z $PORT ]]; then
+			PORT="1194"
+		fi
+		PORT=$(echo "$PORT" | tr -d '[:space:]')
 	done
 
 	# Protocolo
@@ -83,7 +95,7 @@ function installOpenVPN() {
 	echo "Selecione o protocolo:"
 	echo "   1) UDP (Recomendado - mais rápido)"
 	echo "   2) TCP"
-	read -rp "Opção [1-2, padrão 1]: " -e -i 1 PROTOCOL_CHOICE
+	read -rp "Opção [1-2, padrão 1]: " PROTOCOL_CHOICE
 	case $PROTOCOL_CHOICE in
 	2) PROTOCOL="tcp" ;;
 	*) PROTOCOL="udp" ;;
@@ -91,12 +103,24 @@ function installOpenVPN() {
 
 	# Subrede VPN
 	echo ""
-	read -rp "Subrede IP da VPN [177.35.0.0]: " -e -i "177.35.0.0" VPN_SUBNET
-	read -rp "Máscara de Rede da VPN [255.255.255.0]: " -e -i "255.255.255.0" VPN_NETMASK
+	read -rp "Subrede IP da VPN [177.35.0.0]: " VPN_SUBNET
+	if [[ -z $VPN_SUBNET ]]; then
+		VPN_SUBNET="177.35.0.0"
+	fi
+	VPN_SUBNET=$(echo "$VPN_SUBNET" | tr -d '[:space:]')
+
+	read -rp "Máscara de Rede da VPN [255.255.255.0]: " VPN_NETMASK
+	if [[ -z $VPN_NETMASK ]]; then
+		VPN_NETMASK="255.255.255.0"
+	fi
+	VPN_NETMASK=$(echo "$VPN_NETMASK" | tr -d '[:space:]')
 
 	# Primeiro Cliente
 	echo ""
-	read -rp "Nome do primeiro arquivo de cliente [.ovpn]: " -e -i "suporte-prisma" CLIENT_NAME
+	read -rp "Nome do primeiro arquivo de cliente [.ovpn]: " CLIENT_NAME
+	if [[ -z $CLIENT_NAME ]]; then
+		CLIENT_NAME="suporte-prisma"
+	fi
 	CLIENT_NAME=$(echo "$CLIENT_NAME" | tr -cd 'a-zA-Z0-9_-')
 
 	# Detectar Placa de Rede Principal
