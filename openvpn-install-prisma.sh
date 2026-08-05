@@ -313,7 +313,7 @@ function newClientInternal() {
 		awk '/BEGIN/,/END CERTIFICATE/' "/etc/openvpn/easy-rsa/pki/issued/${client_name}.crt"
 		echo "</cert>"
 		echo "<key>"
-		awk '/BEGIN/,/END PRIVATE KEY/' "/etc/openvpn/easy-rsa/pki/private/${client_name}.key"
+		cat "/etc/openvpn/easy-rsa/pki/private/${client_name}.key"
 		echo "</key>"
 		if [[ -s /etc/openvpn/tls-crypt.key ]]; then
 			echo "<tls-crypt>"
