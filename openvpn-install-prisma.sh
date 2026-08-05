@@ -191,11 +191,11 @@ topology subnet
 server $VPN_SUBNET $VPN_NETMASK
 ifconfig-pool-persist ipp.txt
 push "route $VPN_SUBNET $VPN_NETMASK"
-tls-crypt tls-crypt.key
-crl-verify crl.pem
-ca ca.crt
-cert $SERVER_NAME.crt
-key $SERVER_NAME.key
+tls-crypt /etc/openvpn/tls-crypt.key
+crl-verify /etc/openvpn/crl.pem
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/$SERVER_NAME.crt
+key /etc/openvpn/$SERVER_NAME.key
 auth SHA256
 cipher AES-256-GCM
 ncp-ciphers AES-256-GCM:AES-128-GCM
@@ -205,6 +205,11 @@ client-config-dir /etc/openvpn/ccd
 status /var/log/openvpn/status.log
 verb 3
 EOF
+
+	# Garantir que a estrutura /etc/openvpn/server/ também esteja espelhada para instâncias do systemd no RHEL/CentOS
+	mkdir -p /etc/openvpn/server
+	cp /etc/openvpn/server.conf /etc/openvpn/server/server.conf
+	cp /etc/openvpn/tls-crypt.key /etc/openvpn/ca.crt /etc/openvpn/crl.pem "pki/issued/$SERVER_NAME.crt" "pki/private/$SERVER_NAME.key" /etc/openvpn/server/ 2>/dev/null || true
 
 	# Habilitar Roteamento de IP no Kernel
 	echo "net.ipv4.ip_forward=1" >/etc/sysctl.d/99-openvpn.conf
@@ -342,7 +347,7 @@ function newClientInternal() {
 	SAVED_OVPN_PATH="$homeDir/${client_name}.ovpn"
 
 	if [[ ! -s /etc/openvpn/tls-crypt.key ]]; then
-		openvpn --genkey --secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || openvpn --genkey secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || true
+		openvpn --genkey secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || true
 	fi
 
 	cp /etc/openvpn/client-template.txt "$SAVED_OVPN_PATH"
