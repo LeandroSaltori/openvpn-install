@@ -248,6 +248,18 @@ EOF
 	chmod +x /etc/iptables/add-openvpn-rules.sh
 	chmod +x /etc/iptables/rm-openvpn-rules.sh
 
+	# Ajustar Firewalld se estiver ativo (Comum no CentOS 7 / Rocky 8)
+	if systemctl is-active --quiet firewalld; then
+		firewall-cmd --add-port="${PORT}/${PROTOCOL}" >/dev/null 2>&1
+		firewall-cmd --add-masquerade >/dev/null 2>&1
+		firewall-cmd --runtime-to-permanent >/dev/null 2>&1
+	fi
+
+	# Ajustar UFW se estiver ativo (Comum no Debian / Ubuntu / Proxmox)
+	if command -v ufw >/dev/null 2>&1 && ufw status | grep -qs "active"; then
+		ufw allow "${PORT}/${PROTOCOL}" >/dev/null 2>&1
+	fi
+
 	# Criar Serviço Systemd para Manter Regras de IPTables
 	cat <<EOF >/etc/systemd/system/iptables-openvpn.service
 [Unit]
