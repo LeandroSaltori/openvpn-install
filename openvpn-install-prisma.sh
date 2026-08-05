@@ -224,62 +224,6 @@ EOF
 		fi
 	fi
 
-	# Criar scripts para regras de firewall IPTables
-	mkdir -p /etc/iptables
-
-	cat <<EOF >/etc/iptables/add-openvpn-rules.sh
-#!/bin/sh
-iptables -t nat -I POSTROUTING 1 -s ${VPN_SUBNET}/24 -o ${NIC} -j MASQUERADE
-iptables -I INPUT 1 -i tun0 -j ACCEPT
-iptables -I FORWARD 1 -i ${NIC} -o tun0 -j ACCEPT
-iptables -I FORWARD 1 -i tun0 -o ${NIC} -j ACCEPT
-iptables -I INPUT 1 -i ${NIC} -p ${PROTOCOL} --dport ${PORT} -j ACCEPT
-EOF
-
-	cat <<EOF >/etc/iptables/rm-openvpn-rules.sh
-#!/bin/sh
-iptables -t nat -D POSTROUTING -s ${VPN_SUBNET}/24 -o ${NIC} -j MASQUERADE
-iptables -D INPUT -i tun0 -j ACCEPT
-iptables -D FORWARD -i ${NIC} -o tun0 -j ACCEPT
-iptables -D FORWARD -i tun0 -o ${NIC} -j ACCEPT
-iptables -D INPUT -i ${NIC} -p ${PROTOCOL} --dport ${PORT} -j ACCEPT
-EOF
-
-	chmod +x /etc/iptables/add-openvpn-rules.sh
-	chmod +x /etc/iptables/rm-openvpn-rules.sh
-
-	# Ajustar Firewalld se estiver ativo (Comum no CentOS 7 / Rocky 8)
-	if systemctl is-active --quiet firewalld; then
-		firewall-cmd --add-port="${PORT}/${PROTOCOL}" >/dev/null 2>&1
-		firewall-cmd --add-masquerade >/dev/null 2>&1
-		firewall-cmd --runtime-to-permanent >/dev/null 2>&1
-	fi
-
-	# Ajustar UFW se estiver ativo (Comum no Debian / Ubuntu / Proxmox)
-	if command -v ufw >/dev/null 2>&1 && ufw status | grep -qs "active"; then
-		ufw allow "${PORT}/${PROTOCOL}" >/dev/null 2>&1
-	fi
-
-	# Criar Serviço Systemd para Manter Regras de IPTables
-	cat <<EOF >/etc/systemd/system/iptables-openvpn.service
-[Unit]
-Description=Regras IPTables para OpenVPN Prisma
-Before=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/etc/iptables/add-openvpn-rules.sh
-ExecStop=/etc/iptables/rm-openvpn-rules.sh
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-	systemctl daemon-reload
-	systemctl enable iptables-openvpn --now >/dev/null 2>&1
-
 	# Configurar e Habilitar Serviço OpenVPN no Systemd (Suporte CentOS 7, Rocky Linux 8, Debian/Proxmox)
 	if [[ -f /usr/lib/systemd/system/openvpn-server@.service ]]; then
 		cp /usr/lib/systemd/system/openvpn-server@.service /etc/systemd/system/openvpn-server@.service
@@ -458,15 +402,12 @@ function removeOpenVPN() {
 		systemctl disable openvpn-server@server --now >/dev/null 2>&1
 		systemctl disable openvpn@server --now >/dev/null 2>&1
 		systemctl disable openvpn --now >/dev/null 2>&1
-		systemctl disable iptables-openvpn --now >/dev/null 2>&1
 
 		rm -f /etc/systemd/system/openvpn-server@.service
 		rm -f /etc/systemd/system/openvpn\@.service
-		rm -f /etc/systemd/system/iptables-openvpn.service
 		systemctl daemon-reload
 
 		rm -rf /etc/openvpn/
-		rm -rf /etc/iptables/add-openvpn-rules.sh /etc/iptables/rm-openvpn-rules.sh
 		rm -rf /var/log/openvpn
 
 		echo "✅ OpenVPN removido com sucesso!"
