@@ -171,7 +171,11 @@ EOF
 
 	# Copiar certificados para a pasta /etc/openvpn/
 	cp pki/ca.crt pki/private/ca.key "pki/issued/$SERVER_NAME.crt" "pki/private/$SERVER_NAME.key" pki/crl.pem /etc/openvpn/
-	chmod 644 /etc/openvpn/crl.pem
+	chmod 644 /etc/openvpn/crl.pem /etc/openvpn/ca.crt "/etc/openvpn/$SERVER_NAME.crt" 2>/dev/null || true
+	chmod 600 "/etc/openvpn/$SERVER_NAME.key" 2>/dev/null || true
+	if [[ -f /etc/openvpn/tls-crypt.key ]]; then
+		chmod 644 /etc/openvpn/tls-crypt.key 2>/dev/null || true
+	fi
 
 	# Criar diretório CCD para IPs estáticos de clientes, se necessário
 	mkdir -p /etc/openvpn/ccd
@@ -191,11 +195,11 @@ topology subnet
 server $VPN_SUBNET $VPN_NETMASK
 ifconfig-pool-persist ipp.txt
 push "route $VPN_SUBNET $VPN_NETMASK"
-tls-crypt /etc/openvpn/tls-crypt.key
-crl-verify /etc/openvpn/crl.pem
-ca /etc/openvpn/ca.crt
-cert /etc/openvpn/$SERVER_NAME.crt
-key /etc/openvpn/$SERVER_NAME.key
+tls-crypt tls-crypt.key
+crl-verify crl.pem
+ca ca.crt
+cert $SERVER_NAME.crt
+key $SERVER_NAME.key
 auth SHA256
 cipher AES-256-GCM
 ncp-ciphers AES-256-GCM:AES-128-GCM
@@ -206,10 +210,10 @@ status /var/log/openvpn/status.log
 verb 3
 EOF
 
-	# Garantir que a estrutura /etc/openvpn/server/ também esteja espelhada para instâncias do systemd no RHEL/CentOS
+	# Garantir que a estrutura /etc/openvpn/server/ também esteja espelhada para instâncias do systemd no RHEL/CentOS/Rocky
 	mkdir -p /etc/openvpn/server
 	cp /etc/openvpn/server.conf /etc/openvpn/server/server.conf
-	cp /etc/openvpn/tls-crypt.key /etc/openvpn/ca.crt /etc/openvpn/crl.pem "pki/issued/$SERVER_NAME.crt" "pki/private/$SERVER_NAME.key" /etc/openvpn/server/ 2>/dev/null || true
+	cp /etc/openvpn/tls-crypt.key /etc/openvpn/ca.crt /etc/openvpn/crl.pem "/etc/openvpn/$SERVER_NAME.crt" "/etc/openvpn/$SERVER_NAME.key" /etc/openvpn/server/ 2>/dev/null || true
 
 	# Habilitar Roteamento de IP no Kernel
 	echo "net.ipv4.ip_forward=1" >/etc/sysctl.d/99-openvpn.conf
