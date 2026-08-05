@@ -58,27 +58,23 @@ function installOpenVPN() {
 	echo "=================================================================="
 	echo ""
 
-	# Obter IP público ou DDNS (obrigatorio informar)
+	# Obter IP público ou DDNS
 	DETECTED_IP=$(resolvePublicIP)
-	until [[ -n $ENDPOINT ]]; do
-		read -rp "Endereço IP público ou Domínio (ex: alphasis.ddns.com.br): " ENDPOINT
-		ENDPOINT=$(echo "$ENDPOINT" | tr -d '[:space:]')
-		if [[ -z $ENDPOINT ]]; then
-			echo "⚠️ Erro: É necessário digitar o IP público ou o endereço DDNS."
-		fi
-	done
+	if [[ -z $DETECTED_IP ]]; then
+		DETECTED_IP="127.0.0.1"
+	fi
+
+	read -rp "Endereço IP público ou Domínio: " -e -i "$DETECTED_IP" ENDPOINT
+	ENDPOINT=$(echo "$ENDPOINT" | tr -d '[:space:]')
+	if [[ -z $ENDPOINT ]]; then
+		ENDPOINT="$DETECTED_IP"
+	fi
 
 	# Porta do servidor (padrão 1194)
-	read -rp "Porta do OpenVPN [1194]: " PORT
-	if [[ -z $PORT ]]; then
-		PORT="1194"
-	fi
+	read -rp "Porta do OpenVPN: " -e -i 1194 PORT
 	PORT=$(echo "$PORT" | tr -d '[:space:]')
 	until [[ $PORT =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ]; do
-		read -rp "Porta inválida. Digite novamente [1-65535]: " PORT
-		if [[ -z $PORT ]]; then
-			PORT="1194"
-		fi
+		read -rp "Porta inválida. Digite novamente: " -e -i 1194 PORT
 		PORT=$(echo "$PORT" | tr -d '[:space:]')
 	done
 
@@ -87,7 +83,7 @@ function installOpenVPN() {
 	echo "Selecione o protocolo:"
 	echo "   1) UDP (Recomendado - mais rápido)"
 	echo "   2) TCP"
-	read -rp "Opção [1-2, padrão 1]: " PROTOCOL_CHOICE
+	read -rp "Opção [1-2]: " -e -i 1 PROTOCOL_CHOICE
 	case $PROTOCOL_CHOICE in
 	2) PROTOCOL="tcp" ;;
 	*) PROTOCOL="udp" ;;
@@ -95,24 +91,15 @@ function installOpenVPN() {
 
 	# Subrede VPN (padrão 177.35.0.0)
 	echo ""
-	read -rp "Subrede IP da VPN [177.35.0.0]: " VPN_SUBNET
-	if [[ -z $VPN_SUBNET ]]; then
-		VPN_SUBNET="177.35.0.0"
-	fi
+	read -rp "Subrede IP da VPN: " -e -i "177.35.0.0" VPN_SUBNET
 	VPN_SUBNET=$(echo "$VPN_SUBNET" | tr -d '[:space:]')
 
-	read -rp "Máscara de Rede da VPN [255.255.255.0]: " VPN_NETMASK
-	if [[ -z $VPN_NETMASK ]]; then
-		VPN_NETMASK="255.255.255.0"
-	fi
+	read -rp "Máscara de Rede da VPN: " -e -i "255.255.255.0" VPN_NETMASK
 	VPN_NETMASK=$(echo "$VPN_NETMASK" | tr -d '[:space:]')
 
 	# Nome do Primeiro Cliente (padrão suporte-prisma)
 	echo ""
-	read -rp "Nome do primeiro arquivo de cliente [suporte-prisma]: " CLIENT_NAME
-	if [[ -z $CLIENT_NAME ]]; then
-		CLIENT_NAME="suporte-prisma"
-	fi
+	read -rp "Nome do primeiro arquivo de cliente: " -e -i "suporte-prisma" CLIENT_NAME
 	CLIENT_NAME=$(echo "$CLIENT_NAME" | tr -cd 'a-zA-Z0-9_-')
 
 	# Placa de rede principal
