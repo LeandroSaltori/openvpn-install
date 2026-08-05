@@ -49,6 +49,13 @@ Menu disponível:
 2. **Revogar acesso de um cliente**: Cancela o certificado de acesso.
 3. **Desinstalar OpenVPN**: Remove todas as configurações e regras de firewall.
 
+### 3. Desinstalação / Remoção Completa
+Se quiser desinstalar o OpenVPN e remover todas as regras de firewall e certificados, você pode usar a **opção 3** do menu ao reexecutar o script ou rodar o comando direto:
+
+```bash
+./openvpn-install-prisma.sh --remove
+```
+
 ---
 
 ## ⚙️ Gerenciamento do Serviço no Servidor

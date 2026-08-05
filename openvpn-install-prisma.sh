@@ -452,8 +452,13 @@ function removeOpenVPN() {
 }
 
 # ------------------------------------------------------------------------------
-# Menu Principal
+# Menu Principal e Parâmetros
 # ------------------------------------------------------------------------------
+
+if [[ "$1" == "--remove" || "$1" == "--uninstall" || "$1" == "-r" ]]; then
+	removeOpenVPN
+	exit 0
+fi
 
 if [[ -e /etc/openvpn/server.conf ]]; then
 	while true; do
