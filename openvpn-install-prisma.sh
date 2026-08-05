@@ -166,7 +166,7 @@ EOF
 	# Chave TLS-Crypt para proteção adicional contra scanners
 	mkdir -p /etc/openvpn
 	if [[ ! -s /etc/openvpn/tls-crypt.key ]]; then
-		openvpn --genkey --secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || openvpn --genkey secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || true
+		openvpn --genkey secret /etc/openvpn/tls-crypt.key >/dev/null 2>&1 || true
 	fi
 
 	# Copiar certificados para a pasta /etc/openvpn/
