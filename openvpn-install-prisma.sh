@@ -228,34 +228,22 @@ EOF
 		fi
 	fi
 
-	# Configurar e Habilitar Serviço OpenVPN no Systemd (Suporte CentOS 7, Rocky Linux 8, Debian/Proxmox)
-	if [[ -f /usr/lib/systemd/system/openvpn-server@.service ]]; then
-		cp /usr/lib/systemd/system/openvpn-server@.service /etc/systemd/system/openvpn-server@.service
-		sed -i 's|LimitNPROC|#LimitNPROC|' /etc/systemd/system/openvpn-server@.service
-		sed -i 's|/etc/openvpn/server|/etc/openvpn|' /etc/systemd/system/openvpn-server@.service
-		systemctl daemon-reload
+	# Garantir permissões corretas para usuário sem privilégios (nobody)
+	chown -R nobody:$NOGROUP /etc/openvpn /var/log/openvpn 2>/dev/null || true
+	chmod -R 755 /etc/openvpn /var/log/openvpn 2>/dev/null || true
+	mkdir -p /run/openvpn-server /run/openvpn
+
+	# Configurar e Habilitar Serviço OpenVPN no Systemd (Nativo para CentOS 7, Rocky 8, Debian/Proxmox)
+	# Limpar overrides quebrados anteriores se existirem
+	rm -f /etc/systemd/system/openvpn-server@.service /etc/systemd/system/openvpn@.service
+	systemctl daemon-reload
+
+	if systemctl list-unit-files | grep -qs "openvpn-server@.service"; then
 		systemctl enable openvpn-server@server --now
-	elif [[ -f /usr/lib/systemd/system/openvpn@.service ]]; then
-		cp /usr/lib/systemd/system/openvpn@.service /etc/systemd/system/openvpn@.service
-		sed -i 's|LimitNPROC|#LimitNPROC|' /etc/systemd/system/openvpn@.service
-		sed -i 's|/etc/openvpn/server|/etc/openvpn|' /etc/systemd/system/openvpn@.service
-		systemctl daemon-reload
-		systemctl enable openvpn@server --now
-	elif [[ -f /lib/systemd/system/openvpn-server@.service ]]; then
-		cp /lib/systemd/system/openvpn-server@.service /etc/systemd/system/openvpn-server@.service
-		sed -i 's|LimitNPROC|#LimitNPROC|' /etc/systemd/system/openvpn-server@.service
-		sed -i 's|/etc/openvpn/server|/etc/openvpn|' /etc/systemd/system/openvpn-server@.service
-		systemctl daemon-reload
-		systemctl enable openvpn-server@server --now
-	elif [[ -f /lib/systemd/system/openvpn@.service ]]; then
-		cp /lib/systemd/system/openvpn@.service /etc/systemd/system/openvpn@.service 2>/dev/null || true
-		sed -i 's|LimitNPROC|#LimitNPROC|' /etc/systemd/system/openvpn@.service 2>/dev/null || true
-		sed -i 's|/etc/openvpn/server|/etc/openvpn|' /etc/systemd/system/openvpn@.service 2>/dev/null || true
-		systemctl daemon-reload
+	elif systemctl list-unit-files | grep -qs "openvpn@.service"; then
 		systemctl enable openvpn@server --now
 	else
-		systemctl daemon-reload
-		systemctl enable openvpn-server@server --now 2>/dev/null || systemctl enable openvpn@server --now 2>/dev/null || systemctl enable openvpn --now
+		systemctl enable openvpn --now 2>/dev/null || systemctl enable openvpn@server --now 2>/dev/null || systemctl enable openvpn-server@server --now
 	fi
 
 	# Modelo de Configuração do Cliente (.ovpn)
