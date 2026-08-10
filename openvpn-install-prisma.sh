@@ -70,11 +70,11 @@ function installOpenVPN() {
 		ENDPOINT="$DETECTED_IP"
 	fi
 
-	# Porta do servidor (padrão 1196)
-	read -rp "Porta do OpenVPN: " -e -i 1196 PORT
+	# Porta do servidor (padrão 1194 - alterável na instalação)
+	read -rp "Porta do OpenVPN: " -e -i 1194 PORT
 	PORT=$(echo "$PORT" | tr -d '[:space:]')
 	until [[ $PORT =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ]; do
-		read -rp "Porta inválida. Digite novamente: " -e -i 1196 PORT
+		read -rp "Porta inválida. Digite novamente: " -e -i 1194 PORT
 		PORT=$(echo "$PORT" | tr -d '[:space:]')
 	done
 
@@ -89,9 +89,9 @@ function installOpenVPN() {
 	*) PROTOCOL="udp" ;;
 	esac
 
-	# Subrede VPN (padrão 177.35.0.0 -> IP do servidor: 177.35.0.1)
+	# IP do Servidor VPN (pré-preenchido com 177.35.0.1)
 	echo ""
-	read -rp "Subrede IP da VPN (ou IP do Servidor ex: 177.35.0.1): " -e -i "177.35.0.0" VPN_INPUT
+	read -rp "IP do Servidor VPN: " -e -i "177.35.0.1" VPN_INPUT
 	VPN_INPUT=$(echo "$VPN_INPUT" | tr -d '[:space:]')
 
 	# Extrair a base do IP (ex: 177.35.0) para definir a subrede .0 e o gateway .1
