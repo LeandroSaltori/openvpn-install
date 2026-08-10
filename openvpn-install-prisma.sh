@@ -214,12 +214,12 @@ keepalive 10 120
 topology subnet
 server $VPN_SUBNET $VPN_NETMASK
 ifconfig-pool-persist ipp.txt
-push "dhcp-option DNS 1.1.1.1"
-push "dhcp-option DNS 8.8.8.8"
 EOF
 
 	if [[ $ROUTING_CHOICE == "2" ]]; then
 		echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
+		echo 'push "dhcp-option DNS 1.1.1.1"' >>/etc/openvpn/server.conf
+		echo 'push "dhcp-option DNS 8.8.8.8"' >>/etc/openvpn/server.conf
 	else
 		echo "push \"route $VPN_SUBNET $VPN_NETMASK\"" >>/etc/openvpn/server.conf
 	fi
