@@ -70,11 +70,11 @@ function installOpenVPN() {
 		ENDPOINT="$DETECTED_IP"
 	fi
 
-	# Porta do servidor (padrão 1194)
-	read -rp "Porta do OpenVPN: " -e -i 1194 PORT
+	# Porta do servidor (padrão 1196)
+	read -rp "Porta do OpenVPN: " -e -i 1196 PORT
 	PORT=$(echo "$PORT" | tr -d '[:space:]')
 	until [[ $PORT =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ]; do
-		read -rp "Porta inválida. Digite novamente: " -e -i 1194 PORT
+		read -rp "Porta inválida. Digite novamente: " -e -i 1196 PORT
 		PORT=$(echo "$PORT" | tr -d '[:space:]')
 	done
 
