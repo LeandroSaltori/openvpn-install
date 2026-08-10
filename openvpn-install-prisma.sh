@@ -89,13 +89,32 @@ function installOpenVPN() {
 	*) PROTOCOL="udp" ;;
 	esac
 
-	# Subrede VPN (padrão 177.35.0.0)
+	# Subrede VPN (padrão 177.35.0.0 -> IP do servidor: 177.35.0.1)
 	echo ""
-	read -rp "Subrede IP da VPN: " -e -i "177.35.0.0" VPN_SUBNET
-	VPN_SUBNET=$(echo "$VPN_SUBNET" | tr -d '[:space:]')
+	read -rp "Subrede IP da VPN (ou IP do Servidor ex: 177.35.0.1): " -e -i "177.35.0.0" VPN_INPUT
+	VPN_INPUT=$(echo "$VPN_INPUT" | tr -d '[:space:]')
+
+	# Extrair a base do IP (ex: 177.35.0) para definir a subrede .0 e o gateway .1
+	OCTETS=(${VPN_INPUT//./ })
+	if [[ ${#OCTETS[@]} -eq 4 ]]; then
+		VPN_SUBNET="${OCTETS[0]}.${OCTETS[1]}.${OCTETS[2]}.0"
+		SERVER_GATEWAY_IP="${OCTETS[0]}.${OCTETS[1]}.${OCTETS[2]}.1"
+	else
+		VPN_SUBNET="177.35.0.0"
+		SERVER_GATEWAY_IP="177.35.0.1"
+	fi
 
 	read -rp "Máscara de Rede da VPN: " -e -i "255.255.255.0" VPN_NETMASK
 	VPN_NETMASK=$(echo "$VPN_NETMASK" | tr -d '[:space:]')
+
+	echo "📌 O servidor OpenVPN terá o IP interno: $SERVER_GATEWAY_IP"
+
+	# Modo de Roteamento da VPN
+	echo ""
+	echo "Selecione o modo de roteamento de tráfego:"
+	echo "   1) Split-Tunneling (Recomendado: Apenas tráfego da rede $VPN_SUBNET passa pela VPN, mantém a internet do cliente normal)"
+	echo "   2) Full-Tunneling (Redireciona TODA a internet do cliente através da VPN)"
+	read -rp "Opção [1-2]: " -e -i 1 ROUTING_CHOICE
 
 	# Nome do Primeiro Cliente (padrão suporte-prisma)
 	echo ""
@@ -192,7 +211,17 @@ keepalive 10 120
 topology subnet
 server $VPN_SUBNET $VPN_NETMASK
 ifconfig-pool-persist ipp.txt
-push "route $VPN_SUBNET $VPN_NETMASK"
+push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS 8.8.8.8"
+EOF
+
+	if [[ $ROUTING_CHOICE == "2" ]]; then
+		echo 'push "redirect-gateway def1 bypass-dhcp"' >>/etc/openvpn/server.conf
+	else
+		echo "push \"route $VPN_SUBNET $VPN_NETMASK\"" >>/etc/openvpn/server.conf
+	fi
+
+	cat <<EOF >>/etc/openvpn/server.conf
 tls-crypt tls-crypt.key
 crl-verify crl.pem
 ca ca.crt
