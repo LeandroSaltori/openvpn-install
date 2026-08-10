@@ -114,7 +114,10 @@ function installOpenVPN() {
 	echo "Selecione o modo de roteamento de tráfego:"
 	echo "   1) Split-Tunneling (Recomendado: Apenas tráfego da rede $VPN_SUBNET passa pela VPN, mantém a internet do cliente normal)"
 	echo "   2) Full-Tunneling (Redireciona TODA a internet do cliente através da VPN)"
-	read -rp "Opção [1-2]: " -e -i 1 ROUTING_CHOICE
+	until [[ $ROUTING_CHOICE =~ ^[1-2]$ ]]; do
+		read -rp "Opção [1-2]: " -e -i 1 ROUTING_CHOICE
+		ROUTING_CHOICE=$(echo "$ROUTING_CHOICE" | tr -d '[:space:]')
+	done
 
 	# Nome do Primeiro Cliente (padrão suporte-prisma)
 	echo ""
