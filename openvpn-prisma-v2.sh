@@ -18,6 +18,15 @@ log_success() { echo -e "${GREEN}[SUCESSO]${NC} $1"; }
 log_warn()    { echo -e "${YELLOW}[AVISO]${NC} $1"; }
 log_error()   { echo -e "${RED}[ERRO]${NC} $1"; }
 
+# Função para leitura interativa compatível com curl | bash
+tty_read() {
+    if [ -e /dev/tty ]; then
+        read "$@" </dev/tty
+    else
+        read "$@"
+    fi
+}
+
 # 1. Checagem de Root
 if [[ "$EUID" -ne 0 ]]; then
     log_error "Este script deve ser executado como ROOT."
@@ -86,12 +95,12 @@ install_openvpn() {
     [[ -z "$DETECTED_IP" ]] && DETECTED_IP="127.0.0.1"
 
     echo -ne "${WHITE}IP público ou Domínio DDNS do PBX [${GREEN}${DETECTED_IP}${WHITE}]: ${NC}"
-    read -r ENDPOINT
+    tty_read -r ENDPOINT
     ENDPOINT="${ENDPOINT:-$DETECTED_IP}"
     ENDPOINT=$(echo "$ENDPOINT" | tr -d '[:space:]')
 
     echo -ne "${WHITE}Porta do OpenVPN [${GREEN}1194${WHITE}]: ${NC}"
-    read -r PORT
+    tty_read -r PORT
     PORT="${PORT:-1194}"
     PORT=$(echo "$PORT" | tr -d '[:space:]')
 
@@ -100,7 +109,7 @@ install_openvpn() {
     echo "  [1] UDP (Recomendado - Mais rápido e ideal para VoIP)"
     echo "  [2] TCP (Para redes restritivas com bloqueio de UDP)"
     echo -ne "${WHITE}Opção [1/2]: ${NC}"
-    read -r PROTO_CHOICE
+    tty_read -r PROTO_CHOICE
     if [[ "$PROTO_CHOICE" == "2" ]]; then
         PROTOCOL="tcp"
     else
@@ -109,7 +118,7 @@ install_openvpn() {
 
     echo ""
     echo -ne "${WHITE}IP do Servidor VPN [${GREEN}177.35.0.1${WHITE}]: ${NC}"
-    read -r VPN_IP_INPUT
+    tty_read -r VPN_IP_INPUT
     VPN_IP_INPUT="${VPN_IP_INPUT:-177.35.0.1}"
     VPN_IP_INPUT=$(echo "$VPN_IP_INPUT" | tr -d '[:space:]')
 
@@ -136,12 +145,12 @@ install_openvpn() {
     echo -e "${YELLOW}║${NC}     -> Usa NAT/Masquerade e DNS 1.1.1.1 / 8.8.8.8 para não travar.   ${YELLOW}║${NC}"
     echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo -ne "${WHITE}Escolha o modo de roteamento [1/2, padrão 1]: ${NC}"
-    read -r ROUTING_CHOICE
+    tty_read -r ROUTING_CHOICE
     ROUTING_CHOICE="${ROUTING_CHOICE:-1}"
 
     echo ""
     echo -ne "${WHITE}Nome do primeiro certificado de cliente [${GREEN}ramal-suporte${WHITE}]: ${NC}"
-    read -r CLIENT_NAME
+    tty_read -r CLIENT_NAME
     CLIENT_NAME="${CLIENT_NAME:-ramal-suporte}"
     CLIENT_NAME=$(echo "$CLIENT_NAME" | tr -cd 'a-zA-Z0-9_-')
 
@@ -450,13 +459,13 @@ manage_menu() {
         echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
         echo ""
         echo -ne "${WHITE}Escolha uma opção [1-4, 0 para sair]: ${NC}"
-        read -r OPTION
+        tty_read -r OPTION
 
         case "$OPTION" in
             1)
                 echo ""
                 echo -ne "${WHITE}Nome do novo cliente (ex: ramal102 ou notebook-suporte): ${NC}"
-                read -r NEW_CLIENT
+                tty_read -r NEW_CLIENT
                 NEW_CLIENT=$(echo "$NEW_CLIENT" | tr -cd 'a-zA-Z0-9_-')
                 if [[ -z "$NEW_CLIENT" ]]; then
                     log_error "Nome inválido."
@@ -467,7 +476,7 @@ manage_menu() {
                 fi
                 echo ""
                 echo -n "Pressione ENTER para voltar ao menu..."
-                read -r
+                tty_read -r
                 ;;
             2)
                 echo ""
@@ -475,7 +484,7 @@ manage_menu() {
                 tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt 2>/dev/null | grep "^V" | cut -d '=' -f 2 | grep -v "^server$" || true
                 echo ""
                 echo -ne "${WHITE}Digite o nome exato do cliente para revogar: ${NC}"
-                read -r REVOKE_CLIENT
+                tty_read -r REVOKE_CLIENT
                 REVOKE_CLIENT=$(echo "$REVOKE_CLIENT" | tr -d '[:space:]')
                 if [[ -n "$REVOKE_CLIENT" && -f "/etc/openvpn/easy-rsa/pki/issued/${REVOKE_CLIENT}.crt" ]]; then
                     cd /etc/openvpn/easy-rsa/
@@ -490,7 +499,7 @@ manage_menu() {
                 fi
                 echo ""
                 echo -n "Pressione ENTER para voltar ao menu..."
-                read -r
+                tty_read -r
                 ;;
             3)
                 echo ""
@@ -505,13 +514,13 @@ manage_menu() {
                 fi
                 echo ""
                 echo -n "Pressione ENTER para voltar ao menu..."
-                read -r
+                tty_read -r
                 ;;
             4)
                 echo ""
                 echo -e "${RED}TEM CERTEZA QUE DESEJA DESINSTALAR COMPLETAMENTE O OPENVPN?${NC}"
                 echo -ne "Digite 'sim' para confirmar: "
-                read -r CONFIRM
+                tty_read -r CONFIRM
                 if [[ "$CONFIRM" == "sim" ]]; then
                     log_warn "Desinstalando OpenVPN e limpando regras..."
                     systemctl stop openvpn-server@server openvpn@server openvpn iptables-openvpn 2>/dev/null || true
@@ -525,7 +534,7 @@ manage_menu() {
                     log_info "Operação cancelada."
                 fi
                 echo -n "Pressione ENTER para voltar ao menu..."
-                read -r
+                tty_read -r
                 ;;
             0)
                 exit 0
