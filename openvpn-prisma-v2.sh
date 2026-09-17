@@ -4,8 +4,6 @@
 # Otimizado para IPBX Issabel, Asterisk, Proxmox VE & Rocky Linux 8/9, CentOS 7, Debian, Ubuntu
 # ==============================================================================
 
-set -e
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
@@ -18,13 +16,9 @@ log_success() { echo -e "${GREEN}[SUCESSO]${NC} $1"; }
 log_warn()    { echo -e "${YELLOW}[AVISO]${NC} $1"; }
 log_error()   { echo -e "${RED}[ERRO]${NC} $1"; }
 
-# Função para leitura interativa compatível com curl | bash
+# Função para leitura interativa compatível com qualquer terminal
 tty_read() {
-    if [ -e /dev/tty ]; then
-        read "$@" </dev/tty
-    else
-        read "$@"
-    fi
+    read "$@" </dev/tty 2>/dev/null || read "$@"
 }
 
 # 1. Checagem de Root
